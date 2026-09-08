@@ -304,22 +304,27 @@ export default function HomePage() {
 
   // Direct S3 Upload Pipeline
   const handleFilesSelected = async (items: SelectedFileItem[]) => {
+    if (items.length === 0) return;
     const targetFolderId = currentFolderId;
 
-    for (const item of items) {
-      const { file, name: chosenName } = item;
-      const fileName = chosenName.trim() || file.name;
-      const taskId = crypto.randomUUID();
-      const newTask: UploadTask = {
-        id: taskId,
-        file,
+    // 1. Initialize ALL tasks up-front so UI immediately reflects total items count (e.g. 0/5)
+    const newTasks: UploadTask[] = items.map((item) => {
+      const fileName = item.name.trim() || item.file.name;
+      return {
+        id: crypto.randomUUID(),
+        file: item.file,
         name: fileName,
-        size: file.size,
+        size: item.file.size,
         progress: 0,
         status: "pending",
       };
+    });
 
-      setUploadTasks((prev) => [newTask, ...prev]);
+    setUploadTasks((prev) => [...newTasks, ...prev]);
+
+    // 2. Process uploads sequentially
+    for (const task of newTasks) {
+      const { id: taskId, file, name: fileName } = task;
 
       try {
         // Step 1: Request Presigned URL
