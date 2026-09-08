@@ -61,7 +61,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           </div>
         ) : !imageError ? (
           <img
-            src={`/api/media/${item.id}/view`}
+            src={item.thumbnailUrl ? `/api/media/${item.id}/thumbnail` : `/api/media/${item.id}/view`}
             alt={item.name}
             loading="lazy"
             decoding="async"

@@ -1,10 +1,9 @@
 /**
  * Generate a lightweight video thumbnail snapshot directly on the client using HTML5 Canvas.
- * Returns a JPEG Blob, or null if unsupported/failed.
+ * Returns a high-efficiency JPEG Blob (~15-25KB), or null if unsupported/failed.
  */
 export function generateVideoThumbnail(file: File): Promise<Blob | null> {
   return new Promise((resolve) => {
-    // Only process video files
     if (!file.type.startsWith("video/")) {
       return resolve(null);
     }
@@ -34,7 +33,6 @@ export function generateVideoThumbnail(file: File): Promise<Blob | null> {
     };
 
     video.onloadedmetadata = () => {
-      // Seek to 1 second or midway if video is very short
       const targetTime = video.duration > 2 ? 1.0 : Math.max(0.1, video.duration / 2);
       video.currentTime = targetTime;
     };
@@ -42,9 +40,9 @@ export function generateVideoThumbnail(file: File): Promise<Blob | null> {
     video.onseeked = () => {
       try {
         const canvas = document.createElement("canvas");
-        const maxDimension = 540;
-        let width = video.videoWidth || 480;
-        let height = video.videoHeight || 360;
+        const maxDimension = 380;
+        let width = video.videoWidth || 380;
+        let height = video.videoHeight || 280;
 
         if (width > height) {
           if (width > maxDimension) {
@@ -67,7 +65,7 @@ export function generateVideoThumbnail(file: File): Promise<Blob | null> {
           canvas.toBlob(
             (blob) => done(blob),
             "image/jpeg",
-            0.82
+            0.72
           );
           return;
         }
@@ -81,9 +79,84 @@ export function generateVideoThumbnail(file: File): Promise<Blob | null> {
       done(null);
     };
 
-    // 4-second timeout guard
     setTimeout(() => {
       done(null);
-    }, 4000);
+    }, 3500);
+  });
+}
+
+/**
+ * Generate a compressed, lightweight image thumbnail (~15-30KB) directly on the client.
+ * Allows instant loading on mobile even over slow cellular connections.
+ */
+export function generateImageThumbnail(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.type.includes("svg")) {
+      return resolve(null);
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.src = url;
+
+    let hasResolved = false;
+
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+    };
+
+    const done = (blob: Blob | null) => {
+      if (!hasResolved) {
+        hasResolved = true;
+        cleanup();
+        resolve(blob);
+      }
+    };
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const maxDimension = 380;
+        let width = img.naturalWidth || 380;
+        let height = img.naturalHeight || 380;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => done(blob),
+            "image/jpeg",
+            0.72
+          );
+          return;
+        }
+      } catch (e) {
+        console.warn("Failed to generate image thumbnail", e);
+      }
+      done(null);
+    };
+
+    img.onerror = () => {
+      done(null);
+    };
+
+    setTimeout(() => {
+      done(null);
+    }, 3000);
   });
 }

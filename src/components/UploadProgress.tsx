@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { CheckCircle2, AlertCircle, Loader2, X, UploadCloud } from "lucide-react";
 import { UploadTask } from "@/types";
 import { formatBytes } from "@/lib/utils";
@@ -15,11 +15,21 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
   tasks,
   onDismiss,
 }) => {
-  if (tasks.length === 0) return null;
-
   const completedCount = tasks.filter((t) => t.status === "completed").length;
-  const isAllDone = completedCount === tasks.length;
+  const isAllDone = tasks.length > 0 && completedCount === tasks.length;
   const hasErrors = tasks.some((t) => t.status === "error");
+
+  // Automatically dismiss 3.5 seconds after all uploads complete (if no errors)
+  useEffect(() => {
+    if (isAllDone && !hasErrors) {
+      const timer = setTimeout(() => {
+        onDismiss();
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAllDone, hasErrors, onDismiss]);
+
+  if (tasks.length === 0) return null;
 
   return (
     <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 w-[calc(100%-2rem)] sm:w-88 max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200/80 p-3.5 animate-in slide-in-from-bottom-5 duration-300">

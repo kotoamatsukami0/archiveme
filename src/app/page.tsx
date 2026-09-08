@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FolderPlus,
@@ -29,7 +29,7 @@ import {
   MoveModal,
   DeleteConfirmModal,
 } from "@/components/FolderModals";
-import { generateVideoThumbnail } from "@/lib/videoThumbnail";
+import { generateVideoThumbnail, generateImageThumbnail } from "@/lib/videoThumbnail";
 
 export default function HomePage() {
   const router = useRouter();
@@ -92,26 +92,47 @@ export default function HomePage() {
     currentIndex: 0,
   });
 
-  // Open viewer with history state for mobile back button ergonomics
+  const isViewerOpenRef = useRef(false);
+  const viewerHistoryPushedRef = useRef(false);
+
+  // Keep ref synchronized with state
+  useEffect(() => {
+    isViewerOpenRef.current = viewerState.isOpen;
+  }, [viewerState.isOpen]);
+
+  // Open viewer with safe history state for phone back button
   const handleOpenViewer = (index: number) => {
-    window.history.pushState({ modal: "viewer" }, "", "#viewer");
+    try {
+      const currentState = window.history.state || {};
+      window.history.pushState({ ...currentState, __archivemeModal: "viewer" }, "");
+      viewerHistoryPushedRef.current = true;
+    } catch (e) {
+      console.error(e);
+    }
     setViewerState({ isOpen: true, currentIndex: index });
   };
 
-  // Close viewer cleanly handling history
-  const handleCloseViewer = () => {
-    if (window.location.hash === "#viewer") {
-      window.history.back();
-    } else {
-      setViewerState({ isOpen: false, currentIndex: 0 });
+  // Close viewer - ALWAYS closes the modal immediately
+  const handleCloseViewer = useCallback(() => {
+    setViewerState({ isOpen: false, currentIndex: 0 });
+    if (viewerHistoryPushedRef.current) {
+      viewerHistoryPushedRef.current = false;
+      try {
+        window.history.back();
+      } catch (e) {
+        console.error(e);
+      }
     }
-  };
+  }, []);
 
   // Intercept phone hardware / gesture back button
   useEffect(() => {
     const handlePopState = () => {
-      if (viewerState.isOpen) {
+      // If viewer is currently open, close it cleanly
+      if (isViewerOpenRef.current) {
+        viewerHistoryPushedRef.current = false;
         setViewerState({ isOpen: false, currentIndex: 0 });
+        return;
       }
       if (isUploadModalOpen) setIsUploadModalOpen(false);
       if (isNewFolderModalOpen) setIsNewFolderModalOpen(false);
@@ -124,7 +145,6 @@ export default function HomePage() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [
-    viewerState.isOpen,
     isUploadModalOpen,
     isNewFolderModalOpen,
     contextTarget,
@@ -362,47 +382,51 @@ export default function HomePage() {
           }
         });
 
-        // Optional Step 2.5: Generate & Upload Video Thumbnail if media is a video
+        // Step 2.5: Generate & Upload Lightweight Thumbnail for instant loading (videos & photos)
         let thumbnailUrl: string | null = null;
-        if (file.type.startsWith("video/")) {
-          try {
-            const thumbBlob = await generateVideoThumbnail(file);
-            if (thumbBlob) {
-              const thumbFilename = `thumb_${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.jpg`;
-              const thumbPresignedRes = await fetch("/api/upload/presigned-url", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  filename: thumbFilename,
-                  mimeType: "image/jpeg",
-                  folderId: targetFolderId,
-                }),
-              });
+        try {
+          let thumbBlob: Blob | null = null;
+          if (file.type.startsWith("video/")) {
+            thumbBlob = await generateVideoThumbnail(file);
+          } else if (file.type.startsWith("image/")) {
+            thumbBlob = await generateImageThumbnail(file);
+          }
 
-              if (thumbPresignedRes.ok) {
-                const thumbData = await thumbPresignedRes.json();
-                if (thumbData.directB2) {
-                  await fetch(thumbData.uploadUrl, {
-                    method: "PUT",
-                    headers: { "Content-Type": "image/jpeg" },
-                    body: thumbBlob,
-                  });
-                  thumbnailUrl = thumbData.b2Url;
-                } else {
-                  const thumbFormData = new FormData();
-                  thumbFormData.append("file", thumbBlob, thumbFilename);
-                  thumbFormData.append("b2Key", thumbData.b2Key);
-                  const thumbUploadRes = await fetch(thumbData.uploadUrl, {
-                    method: "POST",
-                    body: thumbFormData,
-                  }).then((r) => r.json());
-                  thumbnailUrl = thumbUploadRes.url || thumbData.b2Url;
-                }
+          if (thumbBlob) {
+            const thumbFilename = `thumb_${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.jpg`;
+            const thumbPresignedRes = await fetch("/api/upload/presigned-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                filename: thumbFilename,
+                mimeType: "image/jpeg",
+                folderId: targetFolderId,
+              }),
+            });
+
+            if (thumbPresignedRes.ok) {
+              const thumbData = await thumbPresignedRes.json();
+              if (thumbData.directB2) {
+                await fetch(thumbData.uploadUrl, {
+                  method: "PUT",
+                  headers: { "Content-Type": "image/jpeg" },
+                  body: thumbBlob,
+                });
+                thumbnailUrl = thumbData.b2Url;
+              } else {
+                const thumbFormData = new FormData();
+                thumbFormData.append("file", thumbBlob, thumbFilename);
+                thumbFormData.append("b2Key", thumbData.b2Key);
+                const thumbUploadRes = await fetch(thumbData.uploadUrl, {
+                  method: "POST",
+                  body: thumbFormData,
+                }).then((r) => r.json());
+                thumbnailUrl = thumbUploadRes.url || thumbData.b2Url;
               }
             }
-          } catch (thumbErr) {
-            console.warn("Could not generate video thumbnail:", thumbErr);
           }
+        } catch (thumbErr) {
+          console.warn("Could not generate thumbnail:", thumbErr);
         }
 
         // Step 3: Register Metadata into Turso

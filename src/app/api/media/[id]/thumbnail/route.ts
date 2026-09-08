@@ -26,14 +26,22 @@ export async function GET(
         const key = item.thumbnailUrl.split("/archiveme0/")[1];
         if (key) {
           const signed = await getPresignedViewUrl(decodeURIComponent(key), "image/jpeg");
-          if (signed) return NextResponse.redirect(signed, 307);
+          if (signed) {
+            const res = NextResponse.redirect(signed, 307);
+            res.headers.set("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+            return res;
+          }
         }
       }
-      return NextResponse.redirect(item.thumbnailUrl);
+      const res = NextResponse.redirect(item.thumbnailUrl, 307);
+      res.headers.set("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+      return res;
     }
 
-    // Fallback: redirect to full view
-    return NextResponse.redirect(new URL(`/api/media/${id}/view`, req.url));
+    // Fallback: redirect to full view with cache
+    const fallbackRes = NextResponse.redirect(new URL(`/api/media/${id}/view`, req.url), 307);
+    fallbackRes.headers.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=43200");
+    return fallbackRes;
   } catch (error: any) {
     return NextResponse.json({ error: "Failed to fetch thumbnail" }, { status: 500 });
   }

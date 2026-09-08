@@ -108,20 +108,23 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       className="fixed inset-0 z-50 flex flex-col bg-black/95 text-white backdrop-blur-xl animate-in fade-in duration-200 select-none"
     >
       {/* Top Navigation Bar with >= 44x44px touch targets */}
-      <header className="relative z-20 flex items-center justify-between px-3 sm:px-6 py-3 bg-gradient-to-b from-black/80 to-transparent pt-safe">
+      <header className="relative z-40 flex items-center justify-between px-3 sm:px-6 py-3 bg-gradient-to-b from-black/90 to-transparent pt-[max(env(safe-area-inset-top),16px)]">
         {/* Left: Back / Close */}
         <button
           type="button"
-          onClick={onClose}
-          aria-label="Close viewer"
-          className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="Kembali"
+          className="flex items-center gap-1 min-h-[44px] px-3.5 rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white backdrop-blur-md transition-all shadow-md cursor-pointer flex-shrink-0"
         >
-          <X className="w-5 h-5" />
-          <span className="hidden sm:inline text-xs font-medium">Close</span>
+          <ChevronLeft className="w-5 h-5 -ml-1" />
+          <span className="text-xs font-semibold">Kembali</span>
         </button>
 
         {/* Center: Title & Index */}
-        <div className="flex flex-col items-center max-w-[50%] sm:max-w-[60%] text-center">
+        <div className="flex flex-col items-center max-w-[45%] sm:max-w-[60%] text-center">
           <h3 className="text-sm font-semibold truncate w-full text-white/95">
             {currentItem.name}
           </h3>
@@ -168,7 +171,7 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 
       {/* Main Content Area */}
       <div
-        className="relative flex-1 flex items-center justify-center overflow-hidden p-2 sm:p-6"
+        className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden p-2 sm:p-6"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -193,9 +196,11 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
               poster={currentItem.thumbnailUrl ? `/api/media/${currentItem.id}/thumbnail` : undefined}
               controls
               playsInline
-              autoPlay
+              // @ts-ignore
+              webkit-playsinline="true"
+              x5-playsinline="true"
               preload="metadata"
-              className="max-w-full max-h-full rounded-xl shadow-2xl object-contain transform-gpu outline-none"
+              className="max-w-full max-h-full rounded-xl shadow-2xl object-contain outline-none"
             />
           ) : (
             <img
