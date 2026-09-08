@@ -22,7 +22,7 @@ import { MediaViewerModal } from "@/components/MediaViewerModal";
 import { BottomSheetMenu, ActionItemType } from "@/components/BottomSheetMenu";
 import { MobileBottomBar } from "@/components/MobileBottomBar";
 import { UploadProgress } from "@/components/UploadProgress";
-import { UploadModal } from "@/components/UploadModal";
+import { UploadModal, SelectedFileItem } from "@/components/UploadModal";
 import {
   NewFolderModal,
   RenameModal,
@@ -283,15 +283,17 @@ export default function HomePage() {
   };
 
   // Direct S3 Upload Pipeline
-  const handleFilesSelected = async (files: File[]) => {
+  const handleFilesSelected = async (items: SelectedFileItem[]) => {
     const targetFolderId = currentFolderId;
 
-    for (const file of files) {
+    for (const item of items) {
+      const { file, name: chosenName } = item;
+      const fileName = chosenName.trim() || file.name;
       const taskId = crypto.randomUUID();
       const newTask: UploadTask = {
         id: taskId,
         file,
-        name: file.name,
+        name: fileName,
         size: file.size,
         progress: 0,
         status: "pending",
@@ -305,7 +307,7 @@ export default function HomePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            filename: file.name,
+            filename: fileName,
             mimeType: file.type || "application/octet-stream",
             folderId: targetFolderId,
           }),
@@ -414,7 +416,7 @@ export default function HomePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: file.name,
+            name: fileName,
             b2Key,
             b2Url,
             thumbnailUrl,
