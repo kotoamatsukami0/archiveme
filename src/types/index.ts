@@ -14,6 +14,7 @@ export interface MediaItem {
   name: string;
   b2Key: string;
   b2Url: string;
+  thumbnailUrl?: string | null;
   mimeType: string;
   size: number;
   createdAt: string | Date;

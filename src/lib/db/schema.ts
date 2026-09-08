@@ -13,6 +13,7 @@ export const media = sqliteTable("media", {
   name: text("name").notNull(),
   b2Key: text("b2_key").notNull(),
   b2Url: text("b2_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),

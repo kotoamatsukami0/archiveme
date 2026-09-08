@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanFilename = filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const uniqueKey = `uploads/${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${cleanFilename}`;
+    const safePrefix = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+    const uniqueKey = `uploads/${safePrefix}/${filename.trim()}`;
 
     // If Backblaze B2 is configured, generate presigned PUT URL
     if (isB2Configured()) {

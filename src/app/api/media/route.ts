@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureTablesExist();
     const body = await req.json();
-    const { name, b2Key, b2Url, mimeType, size, folderId } = body;
+    const { name, b2Key, b2Url, thumbnailUrl, mimeType, size, folderId } = body;
 
     if (!name || !b2Key || !b2Url || !mimeType || size === undefined) {
       return NextResponse.json(
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         name,
         b2Key,
         b2Url,
+        thumbnailUrl: thumbnailUrl || null,
         mimeType,
         size: Number(size),
         folderId: normalizedFolderId,

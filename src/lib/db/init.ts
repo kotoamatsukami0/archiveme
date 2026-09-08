@@ -21,11 +21,19 @@ export async function ensureTablesExist() {
         name TEXT NOT NULL,
         b2_key TEXT NOT NULL,
         b2_url TEXT NOT NULL,
+        thumbnail_url TEXT,
         mime_type TEXT NOT NULL,
         size INTEGER NOT NULL,
         created_at INTEGER
       );
     `);
+
+    try {
+      await client.execute(`ALTER TABLE media ADD COLUMN thumbnail_url TEXT;`);
+    } catch {
+      // Column may already exist
+    }
+
     initialized = true;
   } catch (err) {
     console.warn("Table auto-check warning:", err);

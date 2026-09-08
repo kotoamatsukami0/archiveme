@@ -29,6 +29,7 @@ import {
   MoveModal,
   DeleteConfirmModal,
 } from "@/components/FolderModals";
+import { generateVideoThumbnail } from "@/lib/videoThumbnail";
 
 export default function HomePage() {
   const router = useRouter();
@@ -318,6 +319,49 @@ export default function HomePage() {
           }
         });
 
+        // Optional Step 2.5: Generate & Upload Video Thumbnail if media is a video
+        let thumbnailUrl: string | null = null;
+        if (file.type.startsWith("video/")) {
+          try {
+            const thumbBlob = await generateVideoThumbnail(file);
+            if (thumbBlob) {
+              const thumbFilename = `thumb_${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.jpg`;
+              const thumbPresignedRes = await fetch("/api/upload/presigned-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  filename: thumbFilename,
+                  mimeType: "image/jpeg",
+                  folderId: targetFolderId,
+                }),
+              });
+
+              if (thumbPresignedRes.ok) {
+                const thumbData = await thumbPresignedRes.json();
+                if (thumbData.directB2) {
+                  await fetch(thumbData.uploadUrl, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/jpeg" },
+                    body: thumbBlob,
+                  });
+                  thumbnailUrl = thumbData.b2Url;
+                } else {
+                  const thumbFormData = new FormData();
+                  thumbFormData.append("file", thumbBlob, thumbFilename);
+                  thumbFormData.append("b2Key", thumbData.b2Key);
+                  const thumbUploadRes = await fetch(thumbData.uploadUrl, {
+                    method: "POST",
+                    body: thumbFormData,
+                  }).then((r) => r.json());
+                  thumbnailUrl = thumbUploadRes.url || thumbData.b2Url;
+                }
+              }
+            }
+          } catch (thumbErr) {
+            console.warn("Could not generate video thumbnail:", thumbErr);
+          }
+        }
+
         // Step 3: Register Metadata into Turso
         setUploadTasks((prev) =>
           prev.map((t) =>
@@ -332,6 +376,7 @@ export default function HomePage() {
             name: file.name,
             b2Key,
             b2Url,
+            thumbnailUrl,
             mimeType: file.type || "application/octet-stream",
             size: file.size,
             folderId: targetFolderId,

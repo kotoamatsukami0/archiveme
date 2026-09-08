@@ -27,17 +27,28 @@ export const MediaCard: React.FC<MediaCardProps> = ({
       {/* Media Preview Container (Aspect ratio 1:1 square for clean Apple Photos grid) */}
       <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
         {isVideo ? (
-          <div className="w-full h-full flex items-center justify-center bg-slate-900/90 relative group-hover:bg-slate-900 transition">
-            {/* Native video preview snapshot / poster */}
-            <video
-              src={`${item.b2Url}#t=0.1`}
-              preload="metadata"
-              playsInline
-              muted
-              className="w-full h-full object-cover opacity-80 group-hover:opacity-95 transition-opacity"
-            />
+          <div className="w-full h-full flex items-center justify-center bg-slate-900/90 relative group-hover:bg-slate-900 transition overflow-hidden">
+            {/* Instant generated thumbnail preview if available */}
+            {item.thumbnailUrl ? (
+              <img
+                src={item.thumbnailUrl}
+                alt={item.name}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+              />
+            ) : (
+              /* Fallback native video frame */
+              <video
+                src={`${item.b2Url}#t=0.5`}
+                preload="metadata"
+                playsInline
+                muted
+                className="w-full h-full object-cover opacity-80 group-hover:opacity-95 transition-opacity"
+              />
+            )}
             {/* Centered Play Pill */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-white/30 backdrop-blur-md border border-white/40 flex items-center justify-center text-white shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-transform">
                 <Play className="w-5 h-5 fill-white translate-x-0.5" />
               </div>
