@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { ensureTablesExist } from "@/lib/db/init";
-import { deleteB2Object, isB2Configured } from "@/lib/s3";
+import { deleteB2Objects, extractB2Key, isB2Configured } from "@/lib/s3";
 import { eq } from "drizzle-orm";
 import { unlink } from "fs/promises";
 import path from "path";
@@ -61,16 +61,28 @@ export async function DELETE(
       return NextResponse.json({ error: "Media item not found" }, { status: 404 });
     }
 
-    // Purge physical file from Backblaze B2 if configured
-    if (isB2Configured() && item.b2Key) {
-      await deleteB2Object(item.b2Key);
-    } else if (item.b2Url?.startsWith("/uploads/")) {
+    // Purge physical file & thumbnail from Backblaze B2 if configured
+    if (isB2Configured()) {
+      const keysToDelete: string[] = [];
+      if (item.b2Key) keysToDelete.push(item.b2Key);
+      const thumbKey = extractB2Key(item.thumbnailUrl);
+      if (thumbKey && !keysToDelete.includes(thumbKey)) {
+        keysToDelete.push(thumbKey);
+      }
+      if (keysToDelete.length > 0) {
+        await deleteB2Objects(keysToDelete);
+      }
+    } else {
       // Local fallback removal
-      try {
-        const localPath = path.join(process.cwd(), "public", item.b2Url);
-        await unlink(localPath);
-      } catch (err) {
-        // File may already have been removed or missing
+      for (const url of [item.b2Url, item.thumbnailUrl]) {
+        if (url?.startsWith("/uploads/")) {
+          try {
+            const localPath = path.join(process.cwd(), "public", url);
+            await unlink(localPath);
+          } catch (err) {
+            // File may already have been removed or missing
+          }
+        }
       }
     }
 

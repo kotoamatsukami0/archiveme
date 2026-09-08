@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { folders, media } from "@/lib/db/schema";
 import { ensureTablesExist } from "@/lib/db/init";
-import { deleteB2Objects, isB2Configured } from "@/lib/s3";
+import { deleteB2Objects, extractB2Key, isB2Configured } from "@/lib/s3";
 import { eq, inArray } from "drizzle-orm";
 import { unlink } from "fs/promises";
 import path from "path";
@@ -97,19 +97,30 @@ export async function DELETE(
       .from(media)
       .where(inArray(media.folderId, allFolderIdsToDelete));
 
-    // 3. Purge physical files from Backblaze B2
-    const b2Keys = mediaToDelete.map((m) => m.b2Key).filter(Boolean);
-    if (isB2Configured() && b2Keys.length > 0) {
-      await deleteB2Objects(b2Keys);
+    // 3. Purge physical files and thumbnails from Backblaze B2
+    if (isB2Configured()) {
+      const b2Keys: string[] = [];
+      for (const m of mediaToDelete) {
+        if (m.b2Key) b2Keys.push(m.b2Key);
+        const thumbKey = extractB2Key(m.thumbnailUrl);
+        if (thumbKey && !b2Keys.includes(thumbKey)) {
+          b2Keys.push(thumbKey);
+        }
+      }
+      if (b2Keys.length > 0) {
+        await deleteB2Objects(b2Keys);
+      }
     } else {
       // Clean up local files if applicable
       for (const item of mediaToDelete) {
-        if (item.b2Url?.startsWith("/uploads/")) {
-          try {
-            const localPath = path.join(process.cwd(), "public", item.b2Url);
-            await unlink(localPath);
-          } catch (err) {
-            // ignore missing local file
+        for (const url of [item.b2Url, item.thumbnailUrl]) {
+          if (url?.startsWith("/uploads/")) {
+            try {
+              const localPath = path.join(process.cwd(), "public", url);
+              await unlink(localPath);
+            } catch (err) {
+              // ignore missing local file
+            }
           }
         }
       }

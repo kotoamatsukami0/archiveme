@@ -141,3 +141,18 @@ export async function deleteB2Objects(keys: string[]) {
     console.error(`Error batch deleting ${validKeys.length} objects from B2:`, err);
   }
 }
+
+/**
+ * Extract B2 object key from a full URL or key
+ */
+export function extractB2Key(urlOrKey: string | null | undefined): string | null {
+  if (!urlOrKey) return null;
+  if (!urlOrKey.startsWith("http")) return urlOrKey;
+  if (B2_BUCKET_NAME) {
+    const match = urlOrKey.match(new RegExp(`/${B2_BUCKET_NAME}/(.+)$`));
+    if (match) return decodeURIComponent(match[1]);
+  }
+  const genericMatch = urlOrKey.match(/https?:\/\/[^/]+\/[^/]+\/(.+)$/);
+  return genericMatch ? decodeURIComponent(genericMatch[1]) : null;
+}
+
