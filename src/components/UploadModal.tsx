@@ -133,13 +133,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           <div>
             <h3 className="text-base font-bold text-slate-900">
               {selectedItems.length > 0
-                ? `Beri Nama & Upload (${selectedItems.length})`
-                : "Upload Media"}
+                ? `Upload Media (${selectedItems.length})`
+                : "Upload File"}
             </h3>
             <p className="text-xs text-slate-500">
               {selectedItems.length > 0
-                ? "Bisa ubah nama file sebelum diunggah"
-                : "Foto & Video dari perangkat"}
+                ? "Sesuaikan nama sebelum diunggah"
+                : "Pilih foto atau video"}
             </p>
           </div>
           <button
@@ -183,9 +183,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 <FolderOpen className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <span className="block font-semibold">Pilih File dari HP (Nama Asli)</span>
+                <span className="block font-semibold">Pilih File</span>
                 <span className="block text-[11px] text-indigo-100">
-                  Buka File Manager HP agar nama file tidak diubah
+                  Foto atau video dari perangkat
                 </span>
               </div>
             </button>
@@ -200,9 +200,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 <Camera className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <span className="block font-semibold">Ambil Foto atau Video Langsung</span>
+                <span className="block font-semibold">Ambil dari Kamera</span>
                 <span className="block text-[11px] text-slate-500">
-                  Gunakan kamera langsung
+                  Foto atau video langsung
                 </span>
               </div>
             </button>
