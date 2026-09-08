@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import {
   Camera,
-  ImagePlus,
+  FolderOpen,
   Upload,
   X,
   FileVideo,
@@ -26,27 +26,12 @@ interface UploadModalProps {
   onFilesSelected: (files: SelectedFileItem[]) => void;
 }
 
-// Helper to check if a filename is purely numbers from Android/Google Photos
-function isNumericFilename(name: string): boolean {
-  const baseName = name.replace(/\.[^/.]+$/, "");
-  return /^\d+$/.test(baseName) || /^10000\d+$/.test(baseName);
-}
-
-// Generate smart default name if device gives random numbers like 1000036026.mp4
-function getSmartDefaultName(file: File): string {
-  if (!isNumericFilename(file.name)) {
-    return file.name;
+// Helper to filter media files (images & videos)
+function isMediaFile(file: File): boolean {
+  if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+    return true;
   }
-
-  const ext = file.name.split(".").pop() || "";
-  const isVideo = file.type.startsWith("video/");
-  const dateStr = new Date(file.lastModified || Date.now()).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-  return `${isVideo ? "Video" : "Foto"} - ${dateStr}.${ext}`;
+  return /\.(jpe?g|png|gif|webp|svg|heic|mp4|mov|avi|mkv|webm|3gp|m4v)$/i.test(file.name);
 }
 
 export const UploadModal: React.FC<UploadModalProps> = ({
@@ -56,7 +41,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [selectedItems, setSelectedItems] = useState<SelectedFileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -77,10 +62,17 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   };
 
   const addFiles = (files: File[]) => {
-    const newItems: SelectedFileItem[] = files.map((file) => ({
+    const mediaFiles = files.filter(isMediaFile);
+    if (mediaFiles.length === 0 && files.length > 0) {
+      alert("Silakan pilih file foto atau video.");
+      return;
+    }
+
+    // Preserve the EXACT original filename from the device
+    const newItems: SelectedFileItem[] = mediaFiles.map((file) => ({
       id: crypto.randomUUID(),
       file,
-      name: getSmartDefaultName(file),
+      name: file.name,
     }));
     setSelectedItems((prev) => [...prev, ...newItems]);
   };
@@ -159,10 +151,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         </div>
 
         {/* Hidden inputs */}
+        {/* Note: omitting accept="image/*,video/*" triggers Android's native File Manager (ACTION_OPEN_DOCUMENT)
+            instead of Android Photo Picker / Google Photos, preserving raw device filenames (e.g. VID_...mp4) */}
         <input
-          ref={galleryInputRef}
+          ref={fileInputRef}
           type="file"
-          accept="image/*,video/*"
           multiple
           onChange={handleFileInputChange}
           className="hidden"
@@ -180,36 +173,36 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         {/* Step 1: No files selected yet -> Show Pickers */}
         {selectedItems.length === 0 ? (
           <div className="mt-4 space-y-3">
-            {/* Mobile Camera Option */}
+            {/* Primary Option: Device File Manager for 100% Real Filenames */}
             <button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              className="w-full flex items-center gap-3.5 px-4 min-h-[52px] rounded-2xl bg-indigo-50/70 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-950 font-medium text-sm transition"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center gap-3.5 px-4 min-h-[56px] rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-md shadow-indigo-200 transition"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                <Camera className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center flex-shrink-0">
+                <FolderOpen className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <span className="block font-semibold">Ambil Foto atau Video</span>
-                <span className="block text-[11px] text-indigo-700/80">
-                  Gunakan kamera langsung
+                <span className="block font-semibold">Pilih File dari HP (Nama Asli)</span>
+                <span className="block text-[11px] text-indigo-100">
+                  Buka File Manager HP agar nama file tidak diubah
                 </span>
               </div>
             </button>
 
-            {/* Photo Library / Files */}
+            {/* Mobile Camera Option */}
             <button
               type="button"
-              onClick={() => galleryInputRef.current?.click()}
+              onClick={() => cameraInputRef.current?.click()}
               className="w-full flex items-center gap-3.5 px-4 min-h-[52px] rounded-2xl bg-slate-100 hover:bg-slate-200/80 active:bg-slate-300/80 text-slate-900 font-medium text-sm transition"
             >
               <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                <ImagePlus className="w-5 h-5" />
+                <Camera className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <span className="block font-semibold">Pilih dari Galeri / File</span>
+                <span className="block font-semibold">Ambil Foto atau Video Langsung</span>
                 <span className="block text-[11px] text-slate-500">
-                  Pilih foto atau video dari perangkat
+                  Gunakan kamera langsung
                 </span>
               </div>
             </button>
@@ -219,7 +212,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => galleryInputRef.current?.click()}
+              onClick={() => fileInputRef.current?.click()}
               className={`hidden sm:flex flex-col items-center justify-center p-6 mt-2 border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
                 isDragging
                   ? "border-indigo-500 bg-indigo-50/50"
@@ -282,7 +275,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             <div className="pt-3 mt-3 border-t border-slate-100 flex items-center gap-2 flex-shrink-0">
               <button
                 type="button"
-                onClick={() => galleryInputRef.current?.click()}
+                onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-2xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition"
               >
                 <Plus className="w-4 h-4" />
