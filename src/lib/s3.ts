@@ -72,14 +72,13 @@ export async function getPresignedDownloadUrl(
     return null;
   }
 
-  const safeFilename = filename
-    ? encodeURIComponent(filename).replace(/['()]/g, escape)
-    : "download";
+  const safeFilename = filename ? filename.replace(/["\r\n]/g, "") : "download";
+  const encodedFilename = filename ? encodeURIComponent(filename) : "download";
 
   const command = new GetObjectCommand({
     Bucket: B2_BUCKET_NAME,
     Key: key,
-    ResponseContentDisposition: `attachment; filename="${safeFilename}"`,
+    ResponseContentDisposition: `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`,
   });
 
   return await getSignedUrl(s3Client, command, { expiresIn });
