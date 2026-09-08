@@ -189,17 +189,18 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
           {isVideo ? (
             <video
               key={currentItem.id}
-              src={currentItem.b2Url}
+              src={`/api/media/${currentItem.id}/view`}
+              poster={currentItem.thumbnailUrl ? `/api/media/${currentItem.id}/thumbnail` : undefined}
               controls
               playsInline
               autoPlay
-              preload="auto"
+              preload="metadata"
               className="max-w-full max-h-full rounded-xl shadow-2xl object-contain transform-gpu outline-none"
             />
           ) : (
             <img
               key={currentItem.id}
-              src={currentItem.b2Url}
+              src={`/api/media/${currentItem.id}/view`}
               alt={currentItem.name}
               className="max-w-full max-h-full object-contain rounded-xl shadow-2xl transition-all duration-200"
             />

@@ -86,6 +86,27 @@ export async function getPresignedDownloadUrl(
 }
 
 /**
+ * Generate S3 GET Presigned URL for viewing/streaming media with byte-range support
+ */
+export async function getPresignedViewUrl(
+  key: string,
+  contentType?: string,
+  expiresIn = 86400
+) {
+  if (!isB2Configured()) {
+    return null;
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: B2_BUCKET_NAME,
+    Key: key,
+    ResponseContentType: contentType || undefined,
+  });
+
+  return await getSignedUrl(s3Client, command, { expiresIn });
+}
+
+/**
  * Delete a single object from Backblaze B2
  */
 export async function deleteB2Object(key: string) {

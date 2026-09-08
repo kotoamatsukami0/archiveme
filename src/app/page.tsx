@@ -92,6 +92,47 @@ export default function HomePage() {
     currentIndex: 0,
   });
 
+  // Open viewer with history state for mobile back button ergonomics
+  const handleOpenViewer = (index: number) => {
+    window.history.pushState({ modal: "viewer" }, "", "#viewer");
+    setViewerState({ isOpen: true, currentIndex: index });
+  };
+
+  // Close viewer cleanly handling history
+  const handleCloseViewer = () => {
+    if (window.location.hash === "#viewer") {
+      window.history.back();
+    } else {
+      setViewerState({ isOpen: false, currentIndex: 0 });
+    }
+  };
+
+  // Intercept phone hardware / gesture back button
+  useEffect(() => {
+    const handlePopState = () => {
+      if (viewerState.isOpen) {
+        setViewerState({ isOpen: false, currentIndex: 0 });
+      }
+      if (isUploadModalOpen) setIsUploadModalOpen(false);
+      if (isNewFolderModalOpen) setIsNewFolderModalOpen(false);
+      if (contextTarget) setContextTarget(null);
+      if (renameTarget) setRenameTarget(null);
+      if (moveTarget) setMoveTarget(null);
+      if (deleteTarget) setDeleteTarget(null);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [
+    viewerState.isOpen,
+    isUploadModalOpen,
+    isNewFolderModalOpen,
+    contextTarget,
+    renameTarget,
+    moveTarget,
+    deleteTarget,
+  ]);
+
   // Upload Tasks State
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
 
@@ -638,12 +679,7 @@ export default function HomePage() {
                 <MediaCard
                   key={media.id}
                   item={media}
-                  onOpen={() =>
-                    setViewerState({
-                      isOpen: true,
-                      currentIndex: index,
-                    })
-                  }
+                  onOpen={() => handleOpenViewer(index)}
                   onContextMenu={(m, e) => handleOpenContextMenu(m, "media", e)}
                 />
               ))}
@@ -671,7 +707,7 @@ export default function HomePage() {
         isOpen={viewerState.isOpen}
         items={filteredMedia}
         currentIndex={viewerState.currentIndex}
-        onClose={() => setViewerState({ isOpen: false, currentIndex: 0 })}
+        onClose={handleCloseViewer}
         onNavigate={(index) =>
           setViewerState((prev) => ({ ...prev, currentIndex: index }))
         }

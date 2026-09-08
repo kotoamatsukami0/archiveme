@@ -31,7 +31,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
             {/* Instant generated thumbnail preview if available */}
             {item.thumbnailUrl ? (
               <img
-                src={item.thumbnailUrl}
+                src={`/api/media/${item.id}/thumbnail`}
                 alt={item.name}
                 loading="lazy"
                 decoding="async"
@@ -40,7 +40,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
             ) : (
               /* Fallback native video frame */
               <video
-                src={`${item.b2Url}#t=0.5`}
+                src={`/api/media/${item.id}/view#t=0.5`}
                 preload="metadata"
                 playsInline
                 muted
@@ -61,7 +61,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           </div>
         ) : !imageError ? (
           <img
-            src={item.b2Url}
+            src={`/api/media/${item.id}/view`}
             alt={item.name}
             loading="lazy"
             decoding="async"

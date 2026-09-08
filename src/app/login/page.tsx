@@ -32,8 +32,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Success: redirect to dashboard
-      router.push("/");
+      // Success: replace history entry so back button doesn't return to login
+      router.replace("/");
       router.refresh();
     } catch (err: any) {
       setError("Network error. Please try again.");
